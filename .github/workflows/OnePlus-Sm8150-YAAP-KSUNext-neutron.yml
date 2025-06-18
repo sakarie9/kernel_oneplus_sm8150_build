@@ -1,0 +1,121 @@
+name: Build OnePlus-Sm8150-YAAP-rsuntk-KSU-neutron
+on:
+  workflow_dispatch:
+  # schedule:
+  #   # Run once a week on Sunday at midnight. See http://crontab.guru
+  #   - cron: "0 21 * * *"
+  # push:
+  #   branches:
+  #     - fifteen
+  # pull_request:
+  #   branches:
+  #     - fifteen
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_MAXSIZE: "2G"
+      CCACHE_HARDLINK: "true"
+    steps:
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+      - name: Remove unnecessary files
+        run: |
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt install gcc-aarch64-linux-gnu -y
+          sudo apt install gcc-arm-linux-gnueabi -y
+          sudo apt install clang-18 -y
+          sudo apt install libelf-dev libarchive-tools lld llvm axel binutils make python3 libssl-dev build-essential bc  bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs -y
+          sudo apt install openjdk-17-jdk-headless -y
+          # git clone -q https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64 --depth=1
+          # git clone -q --depth=1 --single-branch https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b main aarch64
+          git clone https://github.com/walkonbothsides/AnyKernel3 -b oneplus7 --depth=1
+          rm -rf AnyKernel3/.git
+
+          mkdir -p "./toolchains/neutron-clang"
+          cd "./toolchains/neutron-clang"
+          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+          chmod +x antman
+          ./antman --sync=latest
+          # ./antman --patch=glibc
+          # git clone -q --depth=1 --single-branch https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main clang-aosp
+          # mv clang-aosp/clang-r522817 clang
+
+          # axel -q -n 6 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
+          # mkdir clang && tar -zxvf clang-r522817.tar.gz -C clang
+
+      - name: Checkout Android 15 kernel source
+        run: |
+          rm -rf kernel
+          git clone --recurse-submodules https://github.com/yaap/kernel_oneplus_sm8150 -b fifteen --depth=1 kernel
+          # cd kernel && rm -rf KernelSU && git clone https://github.com/tiann/KernelSU -b main --depth=1 
+          # ln -sf ../KernelSU/kernel drivers/kernelsu && cd ..
+          cd kernel && patch -p1 < kernelsu.patch
+          # curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+          # patch -p1 < path_umount.patch
+          # curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s main
+          cd ..
+      # - name: Add Re:binder support
+      #   run: |
+      #     export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+      #     cd kernel
+      #     wget https://github.com/Sakion-Team/Re-Kernel/releases/download/modifier/Kernel-Modifier-v4.0.jar
+      #     /usr/lib/jvm/java-17-openjdk-amd64/bin/java -jar ./Kernel-Modifier-v4.0.jar
+      #     cd ..
+      - name: Get Version
+        id: get_version
+        run: |
+          cd kernel/KernelSU-Next
+          git rev-list --count HEAD
+          echo "VERSION=$(expr $(git rev-list --count HEAD) + 10200)" >> $GITHUB_OUTPUT
+          cd ../../
+      - name: Build Kernel
+        run: |
+          export KERNEL_DEFCONFIG="gulch_defconfig"
+          export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LLVM=1 LLVM_IAS=1 LD=ld.lld O=out"
+          # export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-androidkernel- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 CONFIG_BUILD_ARM64_DT_OVERLAY=n O=out"
+          export PATH=$(pwd)/toolchains/neutron-clang/bin/:$PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export LD=ld.lld
+          export BRAND_SHOW_FLAG=oneplus
+          export TARGET_PRODUCT=msmnile
+          cd kernel
+          make $KERNEL_CMDLINE CC="ccache clang" $KERNEL_DEFCONFIG
+          make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc --all)
+          cp out/arch/arm64/boot/Image ../AnyKernel3
+          cd ..
+      - name: Create AK3 zip for android 15
+        run: |
+          cd AnyKernel3
+          zip -r ../OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip *
+          cd ..
+      - name: Upload Kernel-SU
+        uses: actions/upload-artifact@v4
+        with:
+          name: OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}
+          path: "AnyKernel3/*"
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip
+          name: OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Device: Oneplus 7
+            Target: YAAP 15
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
