@@ -56,10 +56,10 @@ jobs:
           # axel -q -n 6 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           # mkdir clang && tar -zxvf clang-r522817.tar.gz -C clang
 
-      - name: Checkout Android 15 kernel source
+      - name: Checkout Android 16 kernel source
         run: |
           rm -rf kernel
-          git clone --recurse-submodules https://github.com/yaap/kernel_oneplus_sm8150 -b fifteen --depth=1 kernel
+          git clone --recurse-submodules https://github.com/yaap/kernel_oneplus_sm8150 -b sixteen --depth=1 kernel
           # cd kernel && rm -rf KernelSU && git clone https://github.com/tiann/KernelSU -b main --depth=1 
           # ln -sf ../KernelSU/kernel drivers/kernelsu && cd ..
           cd kernel && patch -p1 < kernelsu.patch
@@ -100,7 +100,7 @@ jobs:
           make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc --all)
           cp out/arch/arm64/boot/Image ../AnyKernel3
           cd ..
-      - name: Create AK3 zip for android 15
+      - name: Create AK3 zip for android 16
         run: |
           cd AnyKernel3
           zip -r ../OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip *
@@ -119,6 +119,6 @@ jobs:
           tag_name: ${{ steps.get_version.outputs.VERSION }}
           body: |
             Device: Oneplus 7
-            Target: YAAP 15
+            Target: YAAP 16
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
