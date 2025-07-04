@@ -5,7 +5,7 @@ This repository provides a custom kernel build for the OnePlus 7 series, based o
 ## Features
 
 - KernelSU-Next
-- Neutron Toolchains
+- Google Toolchains
 
 ## Usage
 
@@ -20,3 +20,4 @@ Download zip kernel from releases and flash with Kernel Flasher.
 - [Kernel](https://github.com/yaap/kernel_oneplus_sm8150)
 - [Build Workflows](https://github.com/hi4th/kernel_oneplus_sm8150)
 - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next)
+
