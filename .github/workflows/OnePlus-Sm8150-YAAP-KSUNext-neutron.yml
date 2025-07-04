@@ -40,7 +40,7 @@ jobs:
 
           mkdir -p "./toolchains/google-clang"
           cd "./toolchains/google-clang"
-          wget -q -O clang.tar.gz "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r563880.tar.gz"
+          wget -q -O clang.tar.gz "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-r547379.tar.gz"
           tar xf clang.tar.gz
 
       - name: Checkout Android 16 kernel source
