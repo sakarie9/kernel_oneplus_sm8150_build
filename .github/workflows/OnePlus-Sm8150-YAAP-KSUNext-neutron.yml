@@ -34,10 +34,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt install gcc-aarch64-linux-gnu -y
-          sudo apt install gcc-arm-linux-gnueabi -y
-          sudo apt install clang-18 -y
-          sudo apt install libelf-dev libarchive-tools lld llvm axel binutils make python3 libssl-dev build-essential bc  bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs -y
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi clang-18 \
+            libelf-dev libarchive-tools lld llvm axel binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs
           # sudo apt install openjdk-17-jdk-headless -y
           # git clone -q https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64 --depth=1
           # git clone -q --depth=1 --single-branch https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b main aarch64
@@ -80,30 +78,51 @@ jobs:
         run: |
           cd kernel/KernelSU-Next
           git rev-list --count HEAD
-          echo "VERSION=$(expr $(git rev-list --count HEAD) + 10200)" >> $GITHUB_OUTPUT
+          echo "KSUVERSION=$(expr $(git rev-list --count HEAD) + 10200)" >> $GITHUB_OUTPUT
           cd ../../
-      - name: Build Kernel
+
+          cd kernel
+          git rev-parse --short=7 HEAD
+          echo "KVERSION=$(expr $(git rev-parse --short=7 HEAD) )" >> $GITHUB_OUTPUT
+          cd ..
+
+          echo "NOW=$(date +'%Y%m%dT%H%M')" >> $GITHUB_OUTPUT
+      # - name: Build Kernel
+      #   run: |
+      #     export KERNEL_DEFCONFIG="gulch_defconfig"
+      #     export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LLVM=1 LLVM_IAS=1 LD=ld.lld O=out"
+      #     # export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-androidkernel- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 CONFIG_BUILD_ARM64_DT_OVERLAY=n O=out"
+      #     export PATH=$(pwd)/toolchains/neutron-clang/bin/:$PATH
+      #     export ARCH=arm64
+      #     export SUBARCH=arm64
+      #     export LD=ld.lld
+      #     export BRAND_SHOW_FLAG=oneplus
+      #     export TARGET_PRODUCT=msmnile
+      #     export KBUILD_BUILD_USER=Sakari
+      #     export KBUILD_BUILD_HOST=Cygnus
+      #     cd kernel
+      #     make $KERNEL_CMDLINE CC="ccache clang" $KERNEL_DEFCONFIG
+      #     make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc --all)
+      #     cp out/arch/arm64/boot/Image ../AnyKernel3
+      #     cd ..
+      - name: Build Kernel LLVM
         run: |
-          export KERNEL_DEFCONFIG="gulch_defconfig"
-          export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LLVM=1 LLVM_IAS=1 LD=ld.lld O=out"
-          # export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-androidkernel- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 CONFIG_BUILD_ARM64_DT_OVERLAY=n O=out"
           export PATH=$(pwd)/toolchains/neutron-clang/bin/:$PATH
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export LD=ld.lld
+          export KERNEL_DEFCONFIG="gulch_defconfig"
           export BRAND_SHOW_FLAG=oneplus
           export TARGET_PRODUCT=msmnile
           export KBUILD_BUILD_USER=Sakari
           export KBUILD_BUILD_HOST=Cygnus
           cd kernel
-          make $KERNEL_CMDLINE CC="ccache clang" $KERNEL_DEFCONFIG
-          make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc --all)
+          make ARCH=arm64 LLVM=1 O=out $KERNEL_DEFCONFIG
+          make ARCH=arm64 LLVM=1 O=out -j$(nproc --all)
           cp out/arch/arm64/boot/Image ../AnyKernel3
           cd ..
       - name: Create AK3 zip for android 16
         run: |
           cd AnyKernel3
-          zip -r ../OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip *
+          # zip -r ../OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip *
+          zip -r ../OUT.zip *
           cd ..
       - name: Upload Kernel-SU
         uses: actions/upload-artifact@v4
@@ -114,11 +133,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}.zip
-          name: OP7-YAAP-KSUNext-neutron-${{ steps.get_version.outputs.VERSION }}
-          tag_name: ${{ steps.get_version.outputs.VERSION }}
+            OUT.zip
+          name: OP7-YAAP-${{ steps.get_version.outputs.KVERSION }}-KSUNext-${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ steps.get_version.outputs.NOW }}
           body: |
             Device: Oneplus 7
             Target: YAAP 16
+            Kernel commit: [${{ steps.get_version.outputs.KVERSION }}](https://github.com/yaap/kernel_oneplus_sm8150/commit/${{ steps.get_version.outputs.KVERSION }})
+            KSUNext: ${{ steps.get_version.outputs.KSUVERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
