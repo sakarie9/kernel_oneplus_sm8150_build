@@ -58,6 +58,7 @@ jobs:
           cd "./toolchains/google-clang"
           wget -q -nc "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz"
           tar xf clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz
+          rm clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz
 
       - name: Checkout Android 16 kernel source
         run: |
