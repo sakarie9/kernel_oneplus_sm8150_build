@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-             libelf-dev libarchive-tools lld llvm axel build-essential libssl-dev mkbootimg device-tree-compiler
+             libelf-dev libarchive-tools lld llvm axel build-essential mkbootimg device-tree-compiler
 
           git clone https://github.com/walkonbothsides/AnyKernel3 -b oneplus7 --depth=1
           rm -rf AnyKernel3/.git
