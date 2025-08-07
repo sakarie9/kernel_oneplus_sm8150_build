@@ -67,6 +67,8 @@ jobs:
           tar xf clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz
           rm clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz
 
+      - uses: rui314/setup-mold@v1
+
       - name: Checkout Android 16 kernel source
         run: |
           rm -rf kernel
@@ -100,8 +102,8 @@ jobs:
           export KBUILD_BUILD_USER=Sakari
           export KBUILD_BUILD_HOST=Cygnus
           cd kernel
-          make ARCH=arm64 LLVM=1 O=out CC="ccache clang" $KERNEL_DEFCONFIG
-          make ARCH=arm64 LLVM=1 O=out CC="ccache clang" -j$(nproc --all)
+          make ARCH=arm64 LLVM=1 O=out CC="ccache clang" LD=mold $KERNEL_DEFCONFIG
+          make ARCH=arm64 LLVM=1 O=out CC="ccache clang" LD=mold -j$(nproc --all)
           cp out/arch/arm64/boot/Image ../AnyKernel3
           cd ..
 
