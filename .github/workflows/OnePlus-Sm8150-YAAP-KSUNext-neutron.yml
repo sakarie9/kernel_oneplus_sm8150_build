@@ -75,6 +75,8 @@ jobs:
           git clone --recurse-submodules https://github.com/yaap/kernel_oneplus_sm8150 -b sixteen --depth=1 kernel
           cd kernel && patch -p1 < kernelsu.patch
           patch -p1 < ${{ github.workspace }}/patches/path_umount.patch
+          # mold
+          patch -p1 < ${{ github.workspace }}/patches/lto_mold_support.patch
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
           cd ..
 
