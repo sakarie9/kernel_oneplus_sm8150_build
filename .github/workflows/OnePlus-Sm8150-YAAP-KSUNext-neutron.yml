@@ -1,6 +1,12 @@
 name: Build OnePlus-Sm8150-YAAP-KSUNext
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Create a release for this build"
+        required: true
+        type: boolean
+
   # schedule:
   #   # Run once a week on Sunday at midnight. See http://crontab.guru
   #   - cron: "0 21 * * *"
@@ -112,6 +118,7 @@ jobs:
           path: "AnyKernel3/*"
 
       - name: Upload to Release
+        if: ${{ inputs.release }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
