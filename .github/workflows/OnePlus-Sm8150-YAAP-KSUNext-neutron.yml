@@ -32,21 +32,28 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf /usr/share/dotnet
 
-      - name: Restore Google clang toolchains
-        uses: actions/cache@v4
-        with:
-          path: |
-            toolchains/google-clang/clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz
-          key: google-clang-${{ env.GOOGLE_CLANG_VERSION }}
-
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi clang-18 \
-            libelf-dev libarchive-tools lld llvm axel binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+             libelf-dev libarchive-tools lld llvm axel build-essential libssl-dev mkbootimg device-tree-compiler
+
           git clone https://github.com/walkonbothsides/AnyKernel3 -b oneplus7 --depth=1
           rm -rf AnyKernel3/.git
 
+      - name: Restore Google clang toolchains
+        id: restore-google-clang-toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            toolchains/google-clang
+          key: google-clang-${{ env.GOOGLE_CLANG_VERSION }}
+          restore-keys: |
+            google-clang-${{ env.GOOGLE_CLANG_VERSION }}
+      
+      - name: Download Google clang toolchains
+        if: steps.restore-google-clang-toolchains.outputs.cache-hit != 'true'
+        run: |
           mkdir -p "./toolchains/google-clang"
           cd "./toolchains/google-clang"
           wget -q -nc "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-${{ env.GOOGLE_CLANG_VERSION }}.tar.gz"
